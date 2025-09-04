@@ -4,7 +4,7 @@
     2. raw data is populated as json payloads as discribed in the assignment:
 
         Assumed two sources here:
-        **wallet_credit_added**
+        ** wallet_credit_added **
         DDL SQL:
         create table wallet_credits_added(
         credit_transaction variant,
