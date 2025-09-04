@@ -39,14 +39,128 @@
 ## ER Diagram
 ```mermaid
 erDiagram
-    WALLET_CREDIT_ADDED {
-        CREDIT_TRANSACTION VARIANT
-        LOADED_AT TIMESTAMP
+
+    %% Raw Event Tables
+    WALLET_CREDITS_ADDED {
+        variant payload
+        timestamp loaded_at
     }
 
-   WALLET_CREDIT_REDEEMED {
-        REDEEM_TRANSACTION VARIANT
-        LOADED_AT TIMESTAMP
+    WALLET_CREDITS_REDEEMED {
+        variant payload
+        timestamp loaded_at
     }
-    
+
+    %% Staging
+    STG_WALLET_CREDIT {
+        string credit_id PK
+        string wallet_id
+        string credit_type
+        string currency_code
+        number credit_value_usd
+        timestamp issued_at
+        timestamp expiry_at
+        timestamp loaded_at
+    }
+
+    STG_WALLET_REDEEMED {
+        string redemption_id PK
+        string wallet_id
+        number redeemed_value_usd
+        timestamp redeemed_at
+        timestamp loaded_at
+    }
+
+    %% Dimension
+    DIM_CALENDAR {
+        date cal_date PK
+        int cal_year
+        int cal_month
+    }
+
+    %% Facts
+    FACT_WALLET_CREDITS {
+        string credit_id PK
+        string wallet_id FK
+        string credit_type
+        string currency_code
+        number credit_value_usd
+        number redeemed_value_usd
+        number remaining_value_usd
+        string status
+        timestamp issued_at
+        timestamp expiry_at
+    }
+
+    FACT_WALLET_REDEMPTION_ALLOCATION {
+        string redemption_id PK
+        string credit_id PK
+        string wallet_id FK
+        number redeemed_value_usd
+        timestamp redeemed_at
+    }
+
+    FACT_WALLET_DAILY_AGG {
+        string wallet_id PK
+        date cal_date PK
+        number total_credits_issued_usd
+        number total_redeemed_usd
+        number balance_usd
+    }
+
+    %% Macro as processing node (pseudo-entity)
+    APPLY_REDEMPTIONS_ROW_BY_ROW {
+        dbt_macro process
+    }
+
+    %% Relationships
+    WALLET_CREDITS_ADDED ||--|| STG_WALLET_CREDIT : "flattened_in"
+    WALLET_CREDITS_REDEEMED ||--|| STG_WALLET_REDEEMED : "flattened_in"
+
+    STG_WALLET_CREDIT ||--|| FACT_WALLET_CREDITS : "feeds only new credit transaction"
+    STG_WALLET_REDEEMED ||--o{ FACT_WALLET_REDEMPTION_ALLOCATION : "uses macro to insert allocations"
+
+    STG_WALLET_REDEEMED ||--|| APPLY_REDEMPTIONS_ROW_BY_ROW : "consumes recent redemption"
+    FACT_WALLET_CREDITS ||--|| APPLY_REDEMPTIONS_ROW_BY_ROW : " consumes latest credit state"
+
+    APPLY_REDEMPTIONS_ROW_BY_ROW ||--o{ FACT_WALLET_REDEMPTION_ALLOCATION : "produces"
+    APPLY_REDEMPTIONS_ROW_BY_ROW ||--o{ FACT_WALLET_CREDITS : "updates"
+
+    DIM_CALENDAR ||--|| FACT_WALLET_DAILY_AGG : "date spline"
+
+    STG_WALLET_CREDIT ||--o{ FACT_WALLET_DAILY_AGG : "summarized_in"
+    STG_WALLET_REDEEMED ||--o{ FACT_WALLET_DAILY_AGG : "summarized_in"
+
+   
 ```
+
+## Business Questions
+
+1. What is the current total balance of all credits in the Headout wallet service?
+
+    Ans:
+    after the macro "***redemption_allocation_macro***" is ran, ***fact_wallet_credit_balance*** represents the latest state for each credit transaction after redemptions are applied.
+    Summing on the **remaining_value_usd** gives us the current balance in credits.
+
+    ```sql
+
+    select 
+        sum(remaining_value_usd) as balance
+    from {{ref(fact_wallet_credit_balance)}}
+
+    ```
+
+2. What is the balance of each credit type (cancellation, goodwill, gift_card)?
+
+    Ans:
+    Extending on above, we can add more granularity to the query above to get the desired result.
+    Sum over **credit_type** will give the current balance on each type.
+
+    ```sql
+
+    select 
+        distinct credit_type,
+        sum(remaining_value_usd) as balance
+    from {{ref(fact_wallet_credit_balance)}}
+
+    ```
