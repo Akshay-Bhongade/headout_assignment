@@ -1,19 +1,13 @@
 ## Assumtions
-1. using snowflake as warehousing solution. 
+1. **Snowflake** is used as the data warehouse.  
 
-2. raw data is populated as json payloads as discribed in the assignment:
+2. Raw data is ingested as JSON payloads, as described in the assignment.  
 
-    Assumed two sources here:
-    a. wallet_credit_added
-        DDL SQL:
-            create table wallet_credits_added(
-            credit_transaction variant,
-            loaded_at timestamp_ntz default current_timestamp
-            );
+   Two source tables are assumed:  
 
-    b. wallet_credit_redeemed
-        DDL SQL:
-            create table wallet_credits_redeemed (
-            redeem_transaction variant,
-            loaded_at timestamp default current_timestamp
-            );
+   a. **wallet_credits_added**  
+   ```sql
+   CREATE TABLE wallet_credits_added (
+       credit_transaction VARIANT,
+       loaded_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP
+   );
