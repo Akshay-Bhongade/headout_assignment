@@ -139,7 +139,7 @@ erDiagram
 1. What is the current total balance of all credits in the Headout wallet service?
 
     Ans:
-    after the macro "***redemption_allocation_macro***" is ran, ***fact_wallet_credit_balance*** represents the latest state for each credit transaction after redemptions are applied.
+    After the macro "***redemption_allocation_macro***" is ran, ***fact_wallet_credit_balance*** represents the latest state for each credit transaction after redemptions are applied.
     Summing on the **remaining_value_usd** gives us the current balance in credits.
 
     ```sql
@@ -153,8 +153,8 @@ erDiagram
 2. What is the balance of each credit type (cancellation, goodwill, gift_card)?
 
     Ans:
-    Extending on above, we can add more granularity to the query above to get the desired result.
-    Sum over **credit_type** will give the current balance on each type.
+    Extending on above, we can add more granularity to the query to get the desired result.
+    Sum over **credit_type** will gives the current balance on each type.
 
     ```sql
 
@@ -162,5 +162,24 @@ erDiagram
         distinct credit_type,
         sum(remaining_value_usd) as balance
     from {{ref(fact_wallet_credit_balance)}}
+
+    ```
+
+3. What is the daily total wallet balance over time?
+
+    Ans:
+    [***fact_wallet_daily_agg***](headout/models/fact_dimensions/fact_wallet_daily_agg.sql) aggregates rolling sum of **credits added** and **redeemed** to each wallet. 
+    Ultimately giving the change in balance for each wallet every day.
+
+     ```sql
+
+    select
+        cal_date,
+        wallet_id,
+        total_credits_issued_usd,
+        total_redeemed_usd,
+        wallet_balance_usd,
+    from {{ref('fact_wallet_daily_agg')}}
+    where wallet_id = "xyz"
 
     ```
