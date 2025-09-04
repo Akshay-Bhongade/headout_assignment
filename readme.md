@@ -123,10 +123,9 @@ erDiagram
     SALES_REPORT {
         id INT PK
     }
+    
 
-    CUSTOMER ||--o{ BUYER
-    CUSTOMER ||--o{ BUSINESS_CLIENT
-    CUSTOMER ||--o{ ADMINISTRATOR
+    CUSTOMER ||--|{ ADMINISTRATOR
     CUSTOMER ||--|| CART
     CUSTOMER ||--|| ORDER
     CUSTOMER ||--|| SUPPORT_TICKET
@@ -154,7 +153,7 @@ erDiagram
     ADMINISTRATOR ||--|| USER_ACTIVITY
     ADMINISTRATOR ||--|| SALES_REPORT
 
-    CUSTOMER }o--o{ DELIVERY_ADDRESS : uses
+    CUSTOMER }|--|| DELIVERY_ADDRESS : uses
 
     
 
